@@ -31,7 +31,7 @@ export async function readJsonFile<T>(config: GitHubConfig, path: string): Promi
   });
 
   if (!response.ok) {
-    throw new Error(`GitHub read failed for ${path}: ${response.status} ${response.statusText}`);
+    throw new Error(await githubErrorMessage(response, `read ${path}`));
   }
 
   const payload = (await response.json()) as ContentsResponse;
@@ -52,7 +52,7 @@ export async function writeJsonFile<T>(config: GitHubConfig, path: string, data:
   });
 
   if (!response.ok) {
-    throw new Error(`GitHub write failed for ${path}: ${response.status} ${response.statusText}`);
+    throw new Error(await githubErrorMessage(response, `write ${path}`));
   }
 
   const payload = (await response.json()) as WriteContentsResponse;
@@ -65,7 +65,7 @@ export async function ensureShaUnchanged(config: GitHubConfig, path: string, loa
   });
 
   if (!response.ok) {
-    throw new Error(`Could not verify latest SHA for ${path}.`);
+    throw new Error(await githubErrorMessage(response, `verify ${path}`));
   }
 
   const payload = (await response.json()) as ContentsResponse;
@@ -90,10 +90,19 @@ export function persistLocalConfig(config: Omit<GitHubConfig, "token"> & { remem
   localStorage.setItem("kt_github_config", JSON.stringify(config));
 }
 
+export function clearLocalConfig() {
+  localStorage.removeItem("kt_github_config");
+}
+
 export function loadLocalConfig() {
   const raw = localStorage.getItem("kt_github_config");
   if (!raw) return null;
-  return JSON.parse(raw) as Omit<GitHubConfig, "token"> & { rememberToken: boolean; token?: string };
+  try {
+    return JSON.parse(raw) as Omit<GitHubConfig, "token"> & { rememberToken: boolean; token?: string };
+  } catch {
+    clearLocalConfig();
+    return null;
+  }
 }
 
 function fileUrl(config: GitHubConfig, path: string) {
@@ -103,9 +112,34 @@ function fileUrl(config: GitHubConfig, path: string) {
 function githubHeaders(token: string) {
   return {
     Accept: "application/vnd.github+json",
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${token.trim()}`,
     "X-GitHub-Api-Version": "2022-11-28",
   };
+}
+
+async function githubErrorMessage(response: Response, action: string) {
+  const fallback = `GitHub could not ${action}: ${response.status} ${response.statusText}`;
+
+  try {
+    const payload = (await response.json()) as { message?: string };
+    const message = payload.message ? ` ${payload.message}` : "";
+
+    if (response.status === 401) {
+      return "GitHub did not accept this token. Paste a fresh fine-grained token with Contents: Read and write access for the private kerala-tiffins-data repository.";
+    }
+
+    if (response.status === 403) {
+      return "GitHub accepted the token, but it does not have permission to use this data repository. Edit the token so kerala-tiffins-data is selected and Contents is set to Read and write.";
+    }
+
+    if (response.status === 404) {
+      return `GitHub could not find the data file or repository while trying to ${action}. Check owner, repository, branch, and token repository access.${message}`;
+    }
+
+    return `${fallback}.${message}`;
+  } catch {
+    return fallback;
+  }
 }
 
 function decodeBase64(value: string) {

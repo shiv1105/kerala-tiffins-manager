@@ -9,7 +9,7 @@ import {
   loadRepositoryData,
   saveRepositoryFile,
 } from "./services/dataRepository";
-import { loadLocalConfig, persistLocalConfig } from "./services/githubClient";
+import { clearLocalConfig, loadLocalConfig, persistLocalConfig } from "./services/githubClient";
 import type { Customer, DeliveryRecord, Invoice, ModuleKey, PauseRequest, Settings } from "./types/domain";
 import { todayIso, tomorrowIso } from "./data/sampleData";
 import { Dashboard } from "./routes/Dashboard";
@@ -38,6 +38,8 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [active, setActive] = useState<ModuleKey>("dashboard");
   const [syncStatus, setSyncStatus] = useState("Live workspace");
+  const [connectionError, setConnectionError] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
   const [selectedInvoiceCustomer, setSelectedInvoiceCustomer] = useState<string | undefined>();
   const [setup, setSetup] = useState<SetupValues>({
     owner: storedConfig?.owner ?? "shiv1105",
@@ -188,21 +190,36 @@ export default function App() {
   };
 
   const connectGitHub = async () => {
+    const token = setup.token.trim();
+    if (!token) {
+      setConnectionError("Paste your GitHub token to connect the live data.");
+      return;
+    }
+
     try {
+      setConnectionError("");
+      setIsConnecting(true);
       setSyncStatus("Connecting to GitHub...");
-      persistLocalConfig({
-        owner: setup.owner,
-        repo: setup.repo,
-        branch: setup.branch,
-        rememberToken: setup.rememberToken,
-        token: setup.rememberToken ? setup.token : undefined,
-      });
       const repoData = await loadRepositoryData({
-        owner: setup.owner,
-        repo: setup.repo,
-        branch: setup.branch,
-        token: setup.token,
+        owner: setup.owner.trim(),
+        repo: setup.repo.trim(),
+        branch: setup.branch.trim(),
+        token,
       });
+      persistLocalConfig({
+        owner: setup.owner.trim(),
+        repo: setup.repo.trim(),
+        branch: setup.branch.trim(),
+        rememberToken: setup.rememberToken,
+        token: setup.rememberToken ? token : undefined,
+      });
+      setSetup((current) => ({
+        ...current,
+        owner: current.owner.trim(),
+        repo: current.repo.trim(),
+        branch: current.branch.trim(),
+        token,
+      }));
       setSettings(repoData.settingsFile.data);
       setUsers(repoData.usersFile.data);
       setCustomers(repoData.customersFile.data);
@@ -216,7 +233,10 @@ export default function App() {
       setIsReady(true);
     } catch (error) {
       setSyncStatus("Live workspace");
-      alert(error instanceof Error ? error.message : "GitHub connection failed.");
+      clearLocalConfig();
+      setConnectionError(error instanceof Error ? error.message : "GitHub connection failed.");
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -228,7 +248,23 @@ export default function App() {
 
   const enterWorkspace = () => {
     localStorage.setItem("kt_admin_session", "true");
+    setConnectionError("");
     setIsAuthenticated(true);
+  };
+
+  const clearSavedConnection = () => {
+    clearLocalConfig();
+    attemptedAutoConnect.current = false;
+    setConnectionError("");
+    setSyncStatus("Live workspace");
+    setSetup((current) => ({ ...current, token: "", rememberToken: false }));
+  };
+
+  const backToLogin = () => {
+    localStorage.removeItem("kt_admin_session");
+    setIsAuthenticated(false);
+    setIsReady(false);
+    setConnectionError("");
   };
 
   if (!isAuthenticated) {
@@ -240,7 +276,18 @@ export default function App() {
   }
 
   if (!isReady) {
-    return <LiveDataSetup values={setup} status={syncStatus} onChange={setSetup} onConnect={connectGitHub} />;
+    return (
+      <LiveDataSetup
+        values={setup}
+        status={syncStatus}
+        error={connectionError}
+        isConnecting={isConnecting}
+        onChange={setSetup}
+        onConnect={connectGitHub}
+        onClear={clearSavedConnection}
+        onBackToLogin={backToLogin}
+      />
+    );
   }
 
   return (
