@@ -97,15 +97,15 @@ export function AppShell({
       ) : null}
 
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-20 border-b border-black/10 bg-coconut/95 px-4 py-3 backdrop-blur lg:px-8">
+        <header className="sticky top-0 z-20 border-b border-black/10 bg-coconut/95 px-3 py-3 backdrop-blur sm:px-4 lg:px-8">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button className="icon-button lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
                 <Menu className="h-4 w-4" />
               </button>
               <div className="min-w-0">
-                <p className="label">Kerala Tiffins Manager</p>
-                <h1 className="truncate text-xl font-bold text-ink">{activeLabel}</h1>
+                <p className="label hidden sm:block">Kerala Tiffins Manager</p>
+                <h1 className="truncate text-lg font-bold text-ink sm:text-xl">{activeLabel}</h1>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -113,9 +113,9 @@ export function AppShell({
                 <FileText className="h-4 w-4 text-leaf" />
                 <span className="truncate">{syncStatus}</span>
               </div>
-              <button className="secondary-button h-9" onClick={onLogout}>
+              <button className="secondary-button h-9 px-2 sm:px-3" onClick={onLogout} aria-label="Logout">
                 <LogOut className="h-4 w-4" />
-                Logout
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
           </div>

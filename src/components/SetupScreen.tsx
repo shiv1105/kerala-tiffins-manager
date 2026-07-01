@@ -1,5 +1,6 @@
 import { KeyRound, LockKeyhole, LogIn, UserRound } from "lucide-react";
 import { useState } from "react";
+import banner from "../assets/kerala-tiffins-banner.png";
 
 export function SetupScreen({
   onContinueDemo,
@@ -21,8 +22,10 @@ export function SetupScreen({
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-coconut px-4 py-8 text-ink">
-      <section className="panel w-full max-w-md p-6 sm:p-8">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-coconut px-4 py-8 text-ink">
+      <img src={banner} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
+      <div className="absolute inset-0 bg-coconut/78" />
+      <section className="panel relative w-full max-w-md bg-white/92 p-6 shadow-soft backdrop-blur-sm sm:p-8">
         <div className="mb-7 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-leaf font-black text-white">KT</div>
           <h1 className="text-2xl font-black leading-tight sm:text-3xl">Kerala Tiffin Operations</h1>
