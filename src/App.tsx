@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { AppShell, type NavItem } from "./components/AppShell";
 import { SetupScreen, type SetupValues } from "./components/SetupScreen";
-import { demoData, loadRepositoryData } from "./services/dataRepository";
+import {
+  demoData,
+  type LoadedRepositoryData,
+  type LoadedRepositoryFile,
+  loadRepositoryData,
+  saveRepositoryFile,
+} from "./services/dataRepository";
 import { loadLocalConfig, persistLocalConfig } from "./services/githubClient";
 import type { Customer, DeliveryRecord, Invoice, ModuleKey, PauseRequest, Settings } from "./types/domain";
 import { todayIso, tomorrowIso } from "./data/sampleData";
@@ -44,8 +50,9 @@ export default function App() {
   const [pauseRequests, setPauseRequests] = useState<PauseRequest[]>(demoData.pauseRequests);
   const [invoices, setInvoices] = useState<Invoice[]>(demoData.invoices);
   const [auditLogs, setAuditLogs] = useState(demoData.auditLogs);
-  const [users] = useState(demoData.users);
-  const [dailyMenus] = useState(demoData.dailyMenus);
+  const [users, setUsers] = useState(demoData.users);
+  const [dailyMenus, setDailyMenus] = useState(demoData.dailyMenus);
+  const [repoFiles, setRepoFiles] = useState<LoadedRepositoryData | null>(null);
 
   const currentUser = users[0];
   const allowedNav = useMemo(
@@ -53,16 +60,42 @@ export default function App() {
     [currentUser.modules],
   );
 
+  const persistRepositoryFile = async <T,>(fileKey: keyof LoadedRepositoryData, nextData: T, message: string) => {
+    if (!repoFiles) return;
+
+    try {
+      setSyncStatus("Saving to GitHub...");
+      const nextFile = await saveRepositoryFile(
+        {
+          owner: setup.owner,
+          repo: setup.repo,
+          branch: setup.branch,
+          token: setup.token,
+        },
+        repoFiles[fileKey] as LoadedRepositoryFile<T>,
+        nextData,
+        message,
+      );
+      setRepoFiles((current) => (current ? { ...current, [fileKey]: nextFile } : current));
+      setSyncStatus(`Saved ${new Date().toLocaleTimeString()}`);
+    } catch (error) {
+      setSyncStatus("Save failed");
+      alert(error instanceof Error ? error.message : "GitHub save failed.");
+    }
+  };
+
   const saveCustomer = (customer: Customer) => {
-    setCustomers((current) => {
-      const exists = current.some((item) => item.id === customer.id);
-      return exists ? current.map((item) => (item.id === customer.id ? customer : item)) : [customer, ...current];
-    });
+    const exists = customers.some((item) => item.id === customer.id);
+    const nextCustomers = exists ? customers.map((item) => (item.id === customer.id ? customer : item)) : [customer, ...customers];
+    setCustomers(nextCustomers);
+    void persistRepositoryFile("customersFile", nextCustomers, "Update customer profiles");
     addAudit("customer.updated", customer.id, `Saved profile for ${customer.name}.`);
   };
 
   const updateDelivery = (delivery: DeliveryRecord) => {
-    setDeliveries((current) => current.map((item) => (item.id === delivery.id ? delivery : item)));
+    const nextDeliveries = deliveries.map((item) => (item.id === delivery.id ? delivery : item));
+    setDeliveries(nextDeliveries);
+    void persistRepositoryFile("deliveriesFile", nextDeliveries, "Update delivery records");
     addAudit("delivery.updated", delivery.customerId, `Marked ${delivery.date} as ${delivery.status}.`);
   };
 
@@ -73,48 +106,54 @@ export default function App() {
       return;
     }
 
-    setPauseRequests((current) => [pause, ...current]);
-    setDeliveries((current) => {
-      const customer = customers.find((item) => item.id === pause.customerId);
-      const now = new Date().toISOString();
-      const updatedDeliveries = current.map((delivery) =>
+    const nextPauseRequests = [pause, ...pauseRequests];
+    const customer = customers.find((item) => item.id === pause.customerId);
+    const now = new Date().toISOString();
+    const updatedDeliveries = deliveries.map((delivery) =>
         delivery.customerId === pause.customerId && pauseDates.includes(delivery.date)
           ? { ...delivery, status: "customer_pause" as const, reason: pause.reason, markedAt: now, markedBy: pause.createdBy }
           : delivery,
-      );
-      const existingKeys = new Set(updatedDeliveries.map((delivery) => `${delivery.customerId}:${delivery.date}`));
-      const missingPauseDeliveries = pauseDates
-        .filter((date) => !existingKeys.has(`${pause.customerId}:${date}`))
-        .map((date) => ({
-          id: `del_${crypto.randomUUID()}`,
-          customerId: pause.customerId,
-          date,
-          mealType: customer?.plan.mealType ?? "lunch",
-          status: "customer_pause" as const,
-          reason: pause.reason,
-          markedAt: now,
-          markedBy: pause.createdBy,
-        }));
+    );
+    const existingKeys = new Set(updatedDeliveries.map((delivery) => `${delivery.customerId}:${delivery.date}`));
+    const missingPauseDeliveries = pauseDates
+      .filter((date) => !existingKeys.has(`${pause.customerId}:${date}`))
+      .map((date) => ({
+        id: `del_${crypto.randomUUID()}`,
+        customerId: pause.customerId,
+        date,
+        mealType: customer?.plan.mealType ?? "lunch",
+        status: "customer_pause" as const,
+        reason: pause.reason,
+        markedAt: now,
+        markedBy: pause.createdBy,
+      }));
+    const nextDeliveries = [...missingPauseDeliveries, ...updatedDeliveries];
 
-      return [...missingPauseDeliveries, ...updatedDeliveries];
-    });
+    setPauseRequests(nextPauseRequests);
+    setDeliveries(nextDeliveries);
+    void persistRepositoryFile("pauseRequestsFile", nextPauseRequests, "Update pause requests");
+    void persistRepositoryFile("deliveriesFile", nextDeliveries, "Apply pause to delivery records");
     addAudit("pause_request.applied", pause.customerId, `Applied pause from ${pause.startDate} to ${pause.endDate}.`);
   };
 
   const saveInvoice = (invoice: Invoice) => {
-    setInvoices((current) => [invoice, ...current]);
-    setSettings((current) => ({
-      ...current,
+    const nextInvoices = [invoice, ...invoices];
+    const nextSettings = {
+      ...settings,
       invoice: {
-        ...current.invoice,
-        nextNumber: current.invoice.nextNumber + 1,
+        ...settings.invoice,
+        nextNumber: settings.invoice.nextNumber + 1,
       },
-    }));
+    };
+    setInvoices(nextInvoices);
+    setSettings(nextSettings);
+    void persistRepositoryFile("invoicesFile", nextInvoices, "Create invoice");
+    void persistRepositoryFile("settingsFile", nextSettings, "Advance invoice number");
     addAudit("invoice.created", invoice.customerId, `Created ${invoice.invoiceNumber}.`);
   };
 
   const addAudit = (action: string, entity: string, summary: string) => {
-    setAuditLogs((current) => [
+    const nextAuditLogs = [
       {
         id: `audit_${crypto.randomUUID()}`,
         actor: currentUser.name,
@@ -123,8 +162,10 @@ export default function App() {
         summary,
         timestamp: new Date().toISOString(),
       },
-      ...current,
-    ]);
+      ...auditLogs,
+    ];
+    setAuditLogs(nextAuditLogs);
+    void persistRepositoryFile("auditLogsFile", nextAuditLogs, "Append audit log");
   };
 
   const connectGitHub = async () => {
@@ -144,7 +185,14 @@ export default function App() {
         token: setup.token,
       });
       setSettings(repoData.settingsFile.data);
+      setUsers(repoData.usersFile.data);
       setCustomers(repoData.customersFile.data);
+      setDailyMenus(repoData.dailyMenusFile.data);
+      setDeliveries(repoData.deliveriesFile.data);
+      setPauseRequests(repoData.pauseRequestsFile.data);
+      setInvoices(repoData.invoicesFile.data);
+      setAuditLogs(repoData.auditLogsFile.data);
+      setRepoFiles(repoData);
       setSyncStatus(`Synced ${new Date().toLocaleTimeString()}`);
       setIsReady(true);
     } catch (error) {
@@ -224,6 +272,7 @@ export default function App() {
           invoices={invoices}
           onChange={(nextSettings) => {
             setSettings(nextSettings);
+            void persistRepositoryFile("settingsFile", nextSettings, "Update Kerala Tiffins settings");
             addAudit("settings.updated", "settings", "Updated business or system settings.");
           }}
         />

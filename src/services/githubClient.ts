@@ -17,6 +17,12 @@ interface ContentsResponse {
   encoding: "base64";
 }
 
+interface WriteContentsResponse {
+  content: {
+    sha: string;
+  };
+}
+
 const apiBase = "https://api.github.com";
 
 export async function readJsonFile<T>(config: GitHubConfig, path: string): Promise<GitHubFile<T>> {
@@ -33,7 +39,7 @@ export async function readJsonFile<T>(config: GitHubConfig, path: string): Promi
   return { path, sha: payload.sha, data: decoded };
 }
 
-export async function writeJsonFile<T>(config: GitHubConfig, path: string, data: T, sha: string, message: string) {
+export async function writeJsonFile<T>(config: GitHubConfig, path: string, data: T, sha: string, message: string): Promise<GitHubFile<T>> {
   const response = await fetch(fileUrl(config, path), {
     method: "PUT",
     headers: githubHeaders(config.token),
@@ -49,7 +55,8 @@ export async function writeJsonFile<T>(config: GitHubConfig, path: string, data:
     throw new Error(`GitHub write failed for ${path}: ${response.status} ${response.statusText}`);
   }
 
-  return response.json();
+  const payload = (await response.json()) as WriteContentsResponse;
+  return { path, sha: payload.content.sha, data };
 }
 
 export async function ensureShaUnchanged(config: GitHubConfig, path: string, loadedSha: string) {
