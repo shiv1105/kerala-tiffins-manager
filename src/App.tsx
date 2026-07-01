@@ -1,15 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { AppShell, type NavItem } from "./components/AppShell";
-import { LiveDataSetup } from "./components/LiveDataSetup";
-import { SetupScreen, type SetupValues } from "./components/SetupScreen";
-import {
-  demoData,
-  type LoadedRepositoryData,
-  type LoadedRepositoryFile,
-  loadRepositoryData,
-  saveRepositoryFile,
-} from "./services/dataRepository";
-import { clearLocalConfig, loadLocalConfig, persistLocalConfig } from "./services/githubClient";
+import { SetupScreen } from "./components/SetupScreen";
+import { demoData, type AppData } from "./services/dataRepository";
 import type { Customer, DeliveryRecord, Invoice, ModuleKey, PauseRequest, Settings } from "./types/domain";
 import { todayIso, tomorrowIso } from "./data/sampleData";
 import { Dashboard } from "./routes/Dashboard";
@@ -31,33 +23,23 @@ const navItems: NavItem[] = [
   { key: "settings", label: "Settings" },
 ];
 
-export default function App() {
-  const storedConfig = loadLocalConfig();
-  const attemptedAutoConnect = useRef(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem("kt_admin_session") === "true");
-  const [isReady, setIsReady] = useState(false);
-  const [active, setActive] = useState<ModuleKey>("dashboard");
-  const [syncStatus, setSyncStatus] = useState("Live workspace");
-  const [connectionError, setConnectionError] = useState("");
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [selectedInvoiceCustomer, setSelectedInvoiceCustomer] = useState<string | undefined>();
-  const [setup, setSetup] = useState<SetupValues>({
-    owner: storedConfig?.owner ?? "shiv1105",
-    repo: storedConfig?.repo ?? "kerala-tiffins-data",
-    branch: storedConfig?.branch ?? "main",
-    token: storedConfig?.rememberToken ? storedConfig.token ?? "" : "",
-    rememberToken: storedConfig?.rememberToken ?? false,
-  });
+const workspaceStorageKey = "kt_local_workspace";
 
-  const [settings, setSettings] = useState<Settings>(demoData.settings);
-  const [customers, setCustomers] = useState<Customer[]>(demoData.customers);
-  const [deliveries, setDeliveries] = useState<DeliveryRecord[]>(demoData.deliveries);
-  const [pauseRequests, setPauseRequests] = useState<PauseRequest[]>(demoData.pauseRequests);
-  const [invoices, setInvoices] = useState<Invoice[]>(demoData.invoices);
-  const [auditLogs, setAuditLogs] = useState(demoData.auditLogs);
-  const [users, setUsers] = useState(demoData.users);
-  const [dailyMenus, setDailyMenus] = useState(demoData.dailyMenus);
-  const [repoFiles, setRepoFiles] = useState<LoadedRepositoryData | null>(null);
+export default function App() {
+  const localWorkspace = loadLocalWorkspace();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [active, setActive] = useState<ModuleKey>("dashboard");
+  const [syncStatus, setSyncStatus] = useState("Local workspace");
+  const [selectedInvoiceCustomer, setSelectedInvoiceCustomer] = useState<string | undefined>();
+
+  const [settings, setSettings] = useState<Settings>(localWorkspace.settings);
+  const [customers, setCustomers] = useState<Customer[]>(localWorkspace.customers);
+  const [deliveries, setDeliveries] = useState<DeliveryRecord[]>(localWorkspace.deliveries);
+  const [pauseRequests, setPauseRequests] = useState<PauseRequest[]>(localWorkspace.pauseRequests);
+  const [invoices, setInvoices] = useState<Invoice[]>(localWorkspace.invoices);
+  const [auditLogs, setAuditLogs] = useState(localWorkspace.auditLogs);
+  const [users] = useState(localWorkspace.users);
+  const [dailyMenus] = useState(localWorkspace.dailyMenus);
 
   const currentUser = users[0];
   const allowedNav = useMemo(
@@ -65,50 +47,38 @@ export default function App() {
     [currentUser.modules],
   );
 
-  const persistRepositoryFile = async <T,>(fileKey: keyof LoadedRepositoryData, nextData: T, message: string) => {
-    if (!repoFiles) {
-      alert("Live storage is not connected. Connect GitHub data before saving.");
-      return false;
-    }
-
-    try {
-      setSyncStatus("Saving to GitHub...");
-      const nextFile = await saveRepositoryFile(
-        {
-          owner: setup.owner,
-          repo: setup.repo,
-          branch: setup.branch,
-          token: setup.token,
-        },
-        repoFiles[fileKey] as LoadedRepositoryFile<T>,
-        nextData,
-        message,
-      );
-      setRepoFiles((current) => (current ? { ...current, [fileKey]: nextFile } : current));
-      setSyncStatus(`Saved ${new Date().toLocaleTimeString()}`);
-      return true;
-    } catch (error) {
-      setSyncStatus("Save failed");
-      alert(error instanceof Error ? error.message : "GitHub save failed.");
-      return false;
-    }
+  const saveWorkspace = (nextData: Partial<AppData>) => {
+    const storedWorkspace = readStoredWorkspace();
+    const merged = {
+      settings,
+      users,
+      customers,
+      dailyMenus,
+      deliveries,
+      pauseRequests,
+      invoices,
+      auditLogs,
+      ...(storedWorkspace ?? {}),
+      ...nextData,
+    };
+    localStorage.setItem(workspaceStorageKey, JSON.stringify(merged));
+    setSyncStatus(`Saved locally ${new Date().toLocaleTimeString()}`);
+    return true;
   };
 
   const saveCustomer = async (customer: Customer) => {
     const exists = customers.some((item) => item.id === customer.id);
     const nextCustomers = exists ? customers.map((item) => (item.id === customer.id ? customer : item)) : [customer, ...customers];
-    const saved = await persistRepositoryFile("customersFile", nextCustomers, "Update customer profiles");
-    if (!saved) return false;
     setCustomers(nextCustomers);
+    saveWorkspace({ customers: nextCustomers });
     void addAudit("customer.updated", customer.id, `Saved profile for ${customer.name}.`);
     return true;
   };
 
   const updateDelivery = async (delivery: DeliveryRecord) => {
     const nextDeliveries = deliveries.map((item) => (item.id === delivery.id ? delivery : item));
-    const saved = await persistRepositoryFile("deliveriesFile", nextDeliveries, "Update delivery records");
-    if (!saved) return;
     setDeliveries(nextDeliveries);
+    saveWorkspace({ deliveries: nextDeliveries });
     void addAudit("delivery.updated", delivery.customerId, `Marked ${delivery.date} as ${delivery.status}.`);
   };
 
@@ -142,15 +112,10 @@ export default function App() {
       }));
     const nextDeliveries = [...missingPauseDeliveries, ...updatedDeliveries];
 
-    void Promise.all([
-      persistRepositoryFile("pauseRequestsFile", nextPauseRequests, "Update pause requests"),
-      persistRepositoryFile("deliveriesFile", nextDeliveries, "Apply pause to delivery records"),
-    ]).then(([pauseSaved, deliveriesSaved]) => {
-      if (!pauseSaved || !deliveriesSaved) return;
-      setPauseRequests(nextPauseRequests);
-      setDeliveries(nextDeliveries);
-      void addAudit("pause_request.applied", pause.customerId, `Applied pause from ${pause.startDate} to ${pause.endDate}.`);
-    });
+    setPauseRequests(nextPauseRequests);
+    setDeliveries(nextDeliveries);
+    saveWorkspace({ pauseRequests: nextPauseRequests, deliveries: nextDeliveries });
+    void addAudit("pause_request.applied", pause.customerId, `Applied pause from ${pause.startDate} to ${pause.endDate}.`);
   };
 
   const saveInvoice = (invoice: Invoice) => {
@@ -162,15 +127,10 @@ export default function App() {
         nextNumber: settings.invoice.nextNumber + 1,
       },
     };
-    void Promise.all([
-      persistRepositoryFile("invoicesFile", nextInvoices, "Create invoice"),
-      persistRepositoryFile("settingsFile", nextSettings, "Advance invoice number"),
-    ]).then(([invoiceSaved, settingsSaved]) => {
-      if (!invoiceSaved || !settingsSaved) return;
-      setInvoices(nextInvoices);
-      setSettings(nextSettings);
-      void addAudit("invoice.created", invoice.customerId, `Created ${invoice.invoiceNumber}.`);
-    });
+    setInvoices(nextInvoices);
+    setSettings(nextSettings);
+    saveWorkspace({ invoices: nextInvoices, settings: nextSettings });
+    void addAudit("invoice.created", invoice.customerId, `Created ${invoice.invoiceNumber}.`);
   };
 
   const addAudit = async (action: string, entity: string, summary: string) => {
@@ -185,109 +145,16 @@ export default function App() {
       },
       ...auditLogs,
     ];
-    const saved = await persistRepositoryFile("auditLogsFile", nextAuditLogs, "Append audit log");
-    if (saved) setAuditLogs(nextAuditLogs);
+    setAuditLogs(nextAuditLogs);
+    saveWorkspace({ auditLogs: nextAuditLogs });
   };
-
-  const connectGitHub = async () => {
-    const token = setup.token.trim();
-    if (!token) {
-      setConnectionError("Paste your GitHub token to connect the live data.");
-      return;
-    }
-
-    try {
-      setConnectionError("");
-      setIsConnecting(true);
-      setSyncStatus("Connecting to GitHub...");
-      const repoData = await loadRepositoryData({
-        owner: setup.owner.trim(),
-        repo: setup.repo.trim(),
-        branch: setup.branch.trim(),
-        token,
-      });
-      persistLocalConfig({
-        owner: setup.owner.trim(),
-        repo: setup.repo.trim(),
-        branch: setup.branch.trim(),
-        rememberToken: setup.rememberToken,
-        token: setup.rememberToken ? token : undefined,
-      });
-      setSetup((current) => ({
-        ...current,
-        owner: current.owner.trim(),
-        repo: current.repo.trim(),
-        branch: current.branch.trim(),
-        token,
-      }));
-      setSettings(repoData.settingsFile.data);
-      setUsers(repoData.usersFile.data);
-      setCustomers(repoData.customersFile.data);
-      setDailyMenus(repoData.dailyMenusFile.data);
-      setDeliveries(repoData.deliveriesFile.data);
-      setPauseRequests(repoData.pauseRequestsFile.data);
-      setInvoices(repoData.invoicesFile.data);
-      setAuditLogs(repoData.auditLogsFile.data);
-      setRepoFiles(repoData);
-      setSyncStatus(`Synced ${new Date().toLocaleTimeString()}`);
-      setIsReady(true);
-    } catch (error) {
-      setSyncStatus("Live workspace");
-      clearLocalConfig();
-      setConnectionError(error instanceof Error ? error.message : "GitHub connection failed.");
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!isAuthenticated || isReady || attemptedAutoConnect.current || !setup.token) return;
-    attemptedAutoConnect.current = true;
-    void connectGitHub();
-  }, [isAuthenticated, isReady, setup.token]);
 
   const enterWorkspace = () => {
-    localStorage.setItem("kt_admin_session", "true");
-    setConnectionError("");
     setIsAuthenticated(true);
   };
 
-  const clearSavedConnection = () => {
-    clearLocalConfig();
-    attemptedAutoConnect.current = false;
-    setConnectionError("");
-    setSyncStatus("Live workspace");
-    setSetup((current) => ({ ...current, token: "", rememberToken: false }));
-  };
-
-  const backToLogin = () => {
-    localStorage.removeItem("kt_admin_session");
-    setIsAuthenticated(false);
-    setIsReady(false);
-    setConnectionError("");
-  };
-
   if (!isAuthenticated) {
-    return (
-      <SetupScreen
-        onContinueDemo={enterWorkspace}
-      />
-    );
-  }
-
-  if (!isReady) {
-    return (
-      <LiveDataSetup
-        values={setup}
-        status={syncStatus}
-        error={connectionError}
-        isConnecting={isConnecting}
-        onChange={setSetup}
-        onConnect={connectGitHub}
-        onClear={clearSavedConnection}
-        onBackToLogin={backToLogin}
-      />
-    );
+    return <SetupScreen onContinueDemo={enterWorkspace} />;
   }
 
   return (
@@ -342,11 +209,30 @@ export default function App() {
           users={users}
           onChange={(nextSettings) => {
             setSettings(nextSettings);
-            void persistRepositoryFile("settingsFile", nextSettings, "Update Kerala Tiffins settings");
+            saveWorkspace({ settings: nextSettings });
             addAudit("settings.updated", "settings", "Updated business or system settings.");
           }}
         />
       ) : null}
     </AppShell>
   );
+}
+
+function loadLocalWorkspace(): AppData {
+  const storedWorkspace = readStoredWorkspace();
+  if (!storedWorkspace) return demoData;
+
+  return { ...demoData, ...storedWorkspace };
+}
+
+function readStoredWorkspace(): Partial<AppData> | null {
+  const stored = localStorage.getItem(workspaceStorageKey);
+  if (!stored) return null;
+
+  try {
+    return JSON.parse(stored) as Partial<AppData>;
+  } catch {
+    localStorage.removeItem(workspaceStorageKey);
+    return null;
+  }
 }
