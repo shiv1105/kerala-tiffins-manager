@@ -204,9 +204,6 @@ export default function App() {
   if (!isReady) {
     return (
       <SetupScreen
-        values={setup}
-        onChange={setSetup}
-        onConnect={connectGitHub}
         onContinueDemo={() => {
           setSyncStatus("Demo data");
           setIsReady(true);
@@ -255,7 +252,6 @@ export default function App() {
       {active === "invoices" ? (
         <InvoiceGenerator
           customers={customers}
-          deliveries={deliveries}
           settings={settings}
           selectedCustomerId={selectedInvoiceCustomer}
           onSaveInvoice={saveInvoice}

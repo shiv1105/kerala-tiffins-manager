@@ -47,7 +47,7 @@ export const settings: Settings = {
     nextNumber: 1,
     dueDays: 7,
     currency: "CAD",
-    notes: "Skipped/customer-pause days are shown for transparency and are not charged.",
+    notes: "Invoice is based on the number of tiffins entered for this billing period.",
   },
   scheduling: {
     defaultDeliveryDays: ["mon", "tue", "wed", "thu", "fri"],

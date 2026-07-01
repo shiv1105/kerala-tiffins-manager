@@ -41,9 +41,8 @@ export async function downloadInvoicePdf(invoice: Invoice, customer: Customer, s
   doc.text(`Due in ${settings.invoice.dueDays} days`, 120, 70);
 
   const rows = [
-    ["Delivered days", String(invoice.deliveredDays)],
-    ["Skipped/customer-pause days", String(invoice.skippedDays)],
-    ["Daily rate", formatMoney(invoice.dailyRate, settings.invoice.currency)],
+    ["Tiffin days", String(invoice.deliveredDays)],
+    ["Rate per tiffin", formatMoney(invoice.dailyRate, settings.invoice.currency)],
     ["Subtotal", formatMoney(invoice.subtotalBeforeDiscount, settings.invoice.currency)],
     ["Discount", `-${formatMoney(invoice.discountAmount, settings.invoice.currency)}`],
     [`Tax (${settings.tax.name})`, formatMoney(invoice.taxAmount, settings.invoice.currency)],

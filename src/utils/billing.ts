@@ -15,6 +15,17 @@ export interface InvoiceCalculationInput {
   failedDeliveryBillable?: boolean;
 }
 
+export interface ManualInvoiceCalculationInput {
+  tiffinDays: number;
+  dailyRate: number;
+  discountType: DiscountType;
+  discountValue: number;
+  taxMode: TaxMode;
+  taxRate: number;
+  paymentsReceived?: number;
+  credits?: number;
+}
+
 export interface InvoiceCalculationResult
   extends Pick<
     Invoice,
@@ -48,6 +59,33 @@ export function calculateInvoice(
     ["skipped", "customer_pause", "cancelled_before_prep"].includes(record.status),
   ).length;
 
+  const subtotalBeforeDiscount = roundMoney(deliveredDays * input.dailyRate);
+  const discountAmount = getDiscountAmount(subtotalBeforeDiscount, input.discountType, input.discountValue);
+  const subtotalAfterDiscount = roundMoney(Math.max(0, subtotalBeforeDiscount - discountAmount));
+  const taxAmount = getTaxAmount(subtotalAfterDiscount, input.taxMode, input.taxRate);
+  const totalDue =
+    input.taxMode === "tax_exclusive" ? roundMoney(subtotalAfterDiscount + taxAmount) : subtotalAfterDiscount;
+  const paymentsReceived = input.paymentsReceived ?? 0;
+  const credits = input.credits ?? 0;
+  const balanceDue = roundMoney(totalDue - paymentsReceived - credits);
+
+  return {
+    deliveredDays,
+    skippedDays,
+    subtotalBeforeDiscount,
+    discountAmount,
+    subtotalAfterDiscount,
+    taxAmount,
+    totalDue,
+    paymentsReceived,
+    credits,
+    balanceDue,
+  };
+}
+
+export function calculateManualInvoice(input: ManualInvoiceCalculationInput): InvoiceCalculationResult {
+  const deliveredDays = Math.max(0, Math.floor(input.tiffinDays));
+  const skippedDays = 0;
   const subtotalBeforeDiscount = roundMoney(deliveredDays * input.dailyRate);
   const discountAmount = getDiscountAmount(subtotalBeforeDiscount, input.discountType, input.discountValue);
   const subtotalAfterDiscount = roundMoney(Math.max(0, subtotalBeforeDiscount - discountAmount));

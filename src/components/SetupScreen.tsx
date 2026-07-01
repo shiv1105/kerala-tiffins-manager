@@ -1,4 +1,4 @@
-import { Github, KeyRound, LockKeyhole, LogIn, ShieldCheck, UserRound } from "lucide-react";
+import { KeyRound, LockKeyhole, LogIn, UserRound } from "lucide-react";
 import { useState } from "react";
 import banner from "../assets/kerala-tiffins-banner.png";
 
@@ -11,19 +11,12 @@ export interface SetupValues {
 }
 
 export function SetupScreen({
-  values,
-  onChange,
   onContinueDemo,
-  onConnect,
 }: {
-  values: SetupValues;
-  onChange: (values: SetupValues) => void;
   onContinueDemo: () => void;
-  onConnect: () => void;
 }) {
   const [adminId, setAdminId] = useState("");
   const [password, setPassword] = useState("");
-  const [showDataSetup, setShowDataSetup] = useState(false);
   const [error, setError] = useState("");
   const credentialsValid = adminId.trim().toLowerCase() === "admin" && password === "admin";
 
@@ -44,29 +37,15 @@ export function SetupScreen({
             <div className="mb-8 flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-md bg-leaf font-black text-white">KT</div>
               <div>
-                <p className="text-sm font-black">Kerala Tiffins Manager</p>
-                <p className="text-xs text-ink/55">GitHub-only operations dashboard</p>
+                <p className="text-sm font-black">Kerala Tiffins</p>
+                <p className="text-xs text-ink/55">Operations dashboard</p>
               </div>
             </div>
 
-            <h1 className="max-w-2xl text-4xl font-black leading-tight text-ink sm:text-5xl">Kerala Tiffins Operations</h1>
+            <h1 className="max-w-2xl text-4xl font-black leading-tight text-ink sm:text-5xl">Kerala Tiffins</h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-ink/68">
-              Login to manage daily schedules, customer profiles, packing checks, invoices, and reports.
+              Log in to manage daily schedules, customer profiles, invoices, and kitchen operations.
             </p>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {[
-                ["Private data", "No customer data in source"],
-                ["SHA checks", "Blocks silent overwrites"],
-                ["JSON + Excel", "Live records with backups"],
-              ].map(([title, body]) => (
-                <div className="panel p-4" key={title}>
-                  <ShieldCheck className="mb-3 h-5 w-5 text-leaf" />
-                  <p className="font-bold">{title}</p>
-                  <p className="mt-1 text-sm text-ink/60">{body}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -106,54 +85,6 @@ export function SetupScreen({
                 <LogIn className="h-4 w-4" />
                 Enter Dashboard
               </button>
-              <button className="secondary-button" onClick={() => setShowDataSetup((current) => !current)}>
-                <Github className="h-4 w-4" />
-                Private Data Settings
-              </button>
-
-              {showDataSetup ? (
-                <section className="mt-1 grid gap-4 rounded-md border border-black/10 bg-coconut p-4">
-                  <label className="grid gap-1">
-                    <span className="label">Owner</span>
-                    <input className="input" value={values.owner} onChange={(event) => onChange({ ...values, owner: event.target.value })} />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="label">Repository</span>
-                    <input className="input" value={values.repo} onChange={(event) => onChange({ ...values, repo: event.target.value })} />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="label">Branch</span>
-                    <input className="input" value={values.branch} onChange={(event) => onChange({ ...values, branch: event.target.value })} />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="label">Fine-grained token</span>
-                    <div className="relative">
-                      <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/35" />
-                      <input
-                        className="input pl-9"
-                        type="password"
-                        value={values.token}
-                        onChange={(event) => onChange({ ...values, token: event.target.value })}
-                      />
-                    </div>
-                  </label>
-                  <label className="flex items-center gap-2 text-sm font-semibold text-ink/70">
-                    <input
-                      type="checkbox"
-                      checked={values.rememberToken}
-                      onChange={(event) => onChange({ ...values, rememberToken: event.target.checked })}
-                    />
-                    Remember token on this device
-                  </label>
-                  <button
-                    className="primary-button"
-                    onClick={() => requireLogin(onConnect)}
-                    disabled={!values.owner || !values.repo || !values.branch || !values.token}
-                  >
-                    Connect Private Data
-                  </button>
-                </section>
-              ) : null}
             </div>
           </div>
         </aside>
