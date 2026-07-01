@@ -14,7 +14,7 @@ export function Customers({
   onGenerateInvoice,
 }: {
   customers: Customer[];
-  onSave: (customer: Customer) => void;
+  onSave: (customer: Customer) => boolean | Promise<boolean>;
   onCreatePause: (pause: PauseRequest) => void;
   onGenerateInvoice: (customerId: string) => void;
 }) {
@@ -22,6 +22,7 @@ export function Customers({
   const [status, setStatus] = useState("all");
   const [editing, setEditing] = useState<Customer | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
   const filtered = useMemo(
     () =>
@@ -62,13 +63,15 @@ export function Customers({
     setErrors([]);
   };
 
-  const saveEditing = () => {
+  const saveEditing = async () => {
     if (!editing) return;
     const nextErrors = validateCustomer(editing);
     setErrors(nextErrors);
     if (nextErrors.length) return;
-    onSave({ ...editing, updatedAt: new Date().toISOString() });
-    setEditing(null);
+    setSaving(true);
+    const saved = await onSave({ ...editing, updatedAt: new Date().toISOString() });
+    setSaving(false);
+    if (saved) setEditing(null);
   };
 
   return (
@@ -135,7 +138,7 @@ export function Customers({
                             ? "border-leaf/25 bg-leaf/10 text-leaf hover:bg-leaf/15"
                             : "border-black/10 bg-white text-ink/70 hover:border-leaf/35 hover:text-leaf"
                         }`}
-                        onClick={() => onSave({ ...customer, status: customer.status === "active" ? "archived" : "active", updatedAt: new Date().toISOString() })}
+                        onClick={() => void onSave({ ...customer, status: customer.status === "active" ? "archived" : "active", updatedAt: new Date().toISOString() })}
                         aria-label={`${customer.status === "active" ? "Deactivate" : "Activate"} ${customer.name}`}
                       >
                         {customer.status === "active" ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
@@ -173,7 +176,9 @@ export function Customers({
               </div>
               <div className="flex gap-2">
                 <button className="secondary-button" onClick={() => setEditing(null)}>Cancel</button>
-                <button className="primary-button" onClick={saveEditing}>Save</button>
+                <button className="primary-button" onClick={() => void saveEditing()} disabled={saving}>
+                  {saving ? "Saving..." : "Save"}
+                </button>
               </div>
             </div>
             {errors.length ? (

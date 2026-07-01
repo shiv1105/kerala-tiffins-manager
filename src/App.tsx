@@ -64,7 +64,10 @@ export default function App() {
   );
 
   const persistRepositoryFile = async <T,>(fileKey: keyof LoadedRepositoryData, nextData: T, message: string) => {
-    if (!repoFiles) return;
+    if (!repoFiles) {
+      alert("Live storage is not connected. Connect GitHub data before saving.");
+      return false;
+    }
 
     try {
       setSyncStatus("Saving to GitHub...");
@@ -81,25 +84,30 @@ export default function App() {
       );
       setRepoFiles((current) => (current ? { ...current, [fileKey]: nextFile } : current));
       setSyncStatus(`Saved ${new Date().toLocaleTimeString()}`);
+      return true;
     } catch (error) {
       setSyncStatus("Save failed");
       alert(error instanceof Error ? error.message : "GitHub save failed.");
+      return false;
     }
   };
 
-  const saveCustomer = (customer: Customer) => {
+  const saveCustomer = async (customer: Customer) => {
     const exists = customers.some((item) => item.id === customer.id);
     const nextCustomers = exists ? customers.map((item) => (item.id === customer.id ? customer : item)) : [customer, ...customers];
+    const saved = await persistRepositoryFile("customersFile", nextCustomers, "Update customer profiles");
+    if (!saved) return false;
     setCustomers(nextCustomers);
-    void persistRepositoryFile("customersFile", nextCustomers, "Update customer profiles");
-    addAudit("customer.updated", customer.id, `Saved profile for ${customer.name}.`);
+    void addAudit("customer.updated", customer.id, `Saved profile for ${customer.name}.`);
+    return true;
   };
 
-  const updateDelivery = (delivery: DeliveryRecord) => {
+  const updateDelivery = async (delivery: DeliveryRecord) => {
     const nextDeliveries = deliveries.map((item) => (item.id === delivery.id ? delivery : item));
+    const saved = await persistRepositoryFile("deliveriesFile", nextDeliveries, "Update delivery records");
+    if (!saved) return;
     setDeliveries(nextDeliveries);
-    void persistRepositoryFile("deliveriesFile", nextDeliveries, "Update delivery records");
-    addAudit("delivery.updated", delivery.customerId, `Marked ${delivery.date} as ${delivery.status}.`);
+    void addAudit("delivery.updated", delivery.customerId, `Marked ${delivery.date} as ${delivery.status}.`);
   };
 
   const createPause = (pause: PauseRequest) => {
@@ -132,11 +140,15 @@ export default function App() {
       }));
     const nextDeliveries = [...missingPauseDeliveries, ...updatedDeliveries];
 
-    setPauseRequests(nextPauseRequests);
-    setDeliveries(nextDeliveries);
-    void persistRepositoryFile("pauseRequestsFile", nextPauseRequests, "Update pause requests");
-    void persistRepositoryFile("deliveriesFile", nextDeliveries, "Apply pause to delivery records");
-    addAudit("pause_request.applied", pause.customerId, `Applied pause from ${pause.startDate} to ${pause.endDate}.`);
+    void Promise.all([
+      persistRepositoryFile("pauseRequestsFile", nextPauseRequests, "Update pause requests"),
+      persistRepositoryFile("deliveriesFile", nextDeliveries, "Apply pause to delivery records"),
+    ]).then(([pauseSaved, deliveriesSaved]) => {
+      if (!pauseSaved || !deliveriesSaved) return;
+      setPauseRequests(nextPauseRequests);
+      setDeliveries(nextDeliveries);
+      void addAudit("pause_request.applied", pause.customerId, `Applied pause from ${pause.startDate} to ${pause.endDate}.`);
+    });
   };
 
   const saveInvoice = (invoice: Invoice) => {
@@ -148,14 +160,18 @@ export default function App() {
         nextNumber: settings.invoice.nextNumber + 1,
       },
     };
-    setInvoices(nextInvoices);
-    setSettings(nextSettings);
-    void persistRepositoryFile("invoicesFile", nextInvoices, "Create invoice");
-    void persistRepositoryFile("settingsFile", nextSettings, "Advance invoice number");
-    addAudit("invoice.created", invoice.customerId, `Created ${invoice.invoiceNumber}.`);
+    void Promise.all([
+      persistRepositoryFile("invoicesFile", nextInvoices, "Create invoice"),
+      persistRepositoryFile("settingsFile", nextSettings, "Advance invoice number"),
+    ]).then(([invoiceSaved, settingsSaved]) => {
+      if (!invoiceSaved || !settingsSaved) return;
+      setInvoices(nextInvoices);
+      setSettings(nextSettings);
+      void addAudit("invoice.created", invoice.customerId, `Created ${invoice.invoiceNumber}.`);
+    });
   };
 
-  const addAudit = (action: string, entity: string, summary: string) => {
+  const addAudit = async (action: string, entity: string, summary: string) => {
     const nextAuditLogs = [
       {
         id: `audit_${crypto.randomUUID()}`,
@@ -167,8 +183,8 @@ export default function App() {
       },
       ...auditLogs,
     ];
-    setAuditLogs(nextAuditLogs);
-    void persistRepositoryFile("auditLogsFile", nextAuditLogs, "Append audit log");
+    const saved = await persistRepositoryFile("auditLogsFile", nextAuditLogs, "Append audit log");
+    if (saved) setAuditLogs(nextAuditLogs);
   };
 
   const connectGitHub = async () => {
