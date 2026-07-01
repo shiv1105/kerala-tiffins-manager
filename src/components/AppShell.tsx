@@ -4,6 +4,7 @@ import {
   ChefHat,
   FileText,
   Home,
+  LogOut,
   Menu,
   ReceiptText,
   Settings,
@@ -34,6 +35,7 @@ export function AppShell({
   navItems,
   user,
   syncStatus,
+  onLogout,
   children,
 }: {
   active: ModuleKey;
@@ -41,6 +43,7 @@ export function AppShell({
   navItems: NavItem[];
   user: AppUser;
   syncStatus: string;
+  onLogout: () => void;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -105,9 +108,15 @@ export function AppShell({
                 <h1 className="truncate text-xl font-bold text-ink">{activeLabel}</h1>
               </div>
             </div>
-            <div className="hidden items-center gap-2 rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-ink/70 sm:flex">
-              <FileText className="h-4 w-4 text-leaf" />
-              <span className="truncate">{syncStatus}</span>
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="hidden items-center gap-2 rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-ink/70 sm:flex">
+                <FileText className="h-4 w-4 text-leaf" />
+                <span className="truncate">{syncStatus}</span>
+              </div>
+              <button className="secondary-button h-9" onClick={onLogout}>
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
             </div>
           </div>
         </header>

@@ -153,12 +153,18 @@ export default function App() {
     setIsAuthenticated(true);
   };
 
+  const logout = () => {
+    setActive("dashboard");
+    setSelectedInvoiceCustomer(undefined);
+    setIsAuthenticated(false);
+  };
+
   if (!isAuthenticated) {
     return <SetupScreen onContinueDemo={enterWorkspace} />;
   }
 
   return (
-    <AppShell active={active} onNavigate={setActive} navItems={allowedNav} user={currentUser} syncStatus={syncStatus}>
+    <AppShell active={active} onNavigate={setActive} navItems={allowedNav} user={currentUser} syncStatus={syncStatus} onLogout={logout}>
       {active === "dashboard" ? (
         <Dashboard
           customers={customers}
