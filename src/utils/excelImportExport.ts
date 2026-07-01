@@ -21,13 +21,25 @@ export async function buildExcelBackup(data: BackupWorkbookData) {
 
 export async function downloadExcelBackup(data: BackupWorkbookData) {
   const buffer = await buildExcelBackup(data);
+  downloadArrayBuffer(buffer, `kerala_tiffins_backup_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+export async function downloadReportWorkbook<T extends Record<string, unknown>>(rows: T[], sheetName: string, filePrefix: string) {
+  const XLSX = await import("xlsx");
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), sheetName);
+  const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  downloadArrayBuffer(buffer, `${filePrefix}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+function downloadArrayBuffer(buffer: ArrayBuffer, filename: string) {
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `kerala_tiffins_backup_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 }

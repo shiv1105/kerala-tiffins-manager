@@ -36,7 +36,7 @@ export function CustomerForm({
             <option value="active">Active</option>
             <option value="paused">Paused</option>
             <option value="cancelled">Cancelled</option>
-            <option value="archived">Archived</option>
+            <option value="archived">Inactive</option>
           </select>
         </label>
       </div>

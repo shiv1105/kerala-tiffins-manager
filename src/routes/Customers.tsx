@@ -1,4 +1,4 @@
-import { Archive, CalendarPlus, Edit3, Plus, ReceiptText, Search, UserRound } from "lucide-react";
+import { CalendarPlus, Edit3, Plus, ReceiptText, Search, ToggleLeft, ToggleRight, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "../components/Badge";
 import { CustomerForm } from "../components/CustomerForm";
@@ -84,7 +84,7 @@ export function Customers({
             <option value="active">Active</option>
             <option value="paused">Paused</option>
             <option value="cancelled">Cancelled</option>
-            <option value="archived">Archived</option>
+            <option value="archived">Inactive</option>
           </select>
         </div>
         <button className="primary-button" onClick={startNew}>
@@ -125,7 +125,23 @@ export function Customers({
                   <td className="px-4 py-3">{customer.address.zone}</td>
                   <td className="px-4 py-3 capitalize">{customer.plan.type} / {customer.plan.mealType}</td>
                   <td className="px-4 py-3">
-                    <Badge tone={customer.status === "active" ? "green" : customer.status === "paused" ? "amber" : "neutral"}>{customer.status}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge tone={customer.status === "active" ? "green" : customer.status === "paused" ? "amber" : "neutral"}>
+                        {customer.status === "archived" ? "inactive" : customer.status}
+                      </Badge>
+                      <button
+                        className={`inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs font-bold transition ${
+                          customer.status === "active"
+                            ? "border-leaf/25 bg-leaf/10 text-leaf hover:bg-leaf/15"
+                            : "border-black/10 bg-white text-ink/70 hover:border-leaf/35 hover:text-leaf"
+                        }`}
+                        onClick={() => onSave({ ...customer, status: customer.status === "active" ? "archived" : "active", updatedAt: new Date().toISOString() })}
+                        aria-label={`${customer.status === "active" ? "Deactivate" : "Activate"} ${customer.name}`}
+                      >
+                        {customer.status === "active" ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                        {customer.status === "active" ? "Active" : "Inactive"}
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-3">{customer.preferences.length}</td>
                   <td className="px-4 py-3">{formatMoney(customer.plan.defaultRate)}</td>
@@ -137,9 +153,6 @@ export function Customers({
                       </button>
                       <button className="icon-button" onClick={() => onGenerateInvoice(customer.id)} aria-label={`Generate invoice for ${customer.name}`}>
                         <ReceiptText className="h-4 w-4" />
-                      </button>
-                      <button className="icon-button" onClick={() => onSave({ ...customer, status: "archived" })} aria-label={`Archive ${customer.name}`}>
-                        <Archive className="h-4 w-4" />
                       </button>
                     </div>
                   </td>

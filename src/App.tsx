@@ -34,7 +34,7 @@ export default function App() {
   const storedConfig = loadLocalConfig();
   const [isReady, setIsReady] = useState(false);
   const [active, setActive] = useState<ModuleKey>("dashboard");
-  const [syncStatus, setSyncStatus] = useState("Demo data");
+  const [syncStatus, setSyncStatus] = useState("Live workspace");
   const [selectedInvoiceCustomer, setSelectedInvoiceCustomer] = useState<string | undefined>();
   const [setup, setSetup] = useState<SetupValues>({
     owner: storedConfig?.owner ?? "shiv1105",
@@ -196,18 +196,24 @@ export default function App() {
       setSyncStatus(`Synced ${new Date().toLocaleTimeString()}`);
       setIsReady(true);
     } catch (error) {
-      setSyncStatus("Demo data");
+      setSyncStatus("Live workspace");
       alert(error instanceof Error ? error.message : "GitHub connection failed.");
     }
+  };
+
+  const enterWorkspace = () => {
+    if (setup.owner && setup.repo && setup.branch && setup.token) {
+      void connectGitHub();
+      return;
+    }
+    setSyncStatus("Live workspace");
+    setIsReady(true);
   };
 
   if (!isReady) {
     return (
       <SetupScreen
-        onContinueDemo={() => {
-          setSyncStatus("Demo data");
-          setIsReady(true);
-        }}
+        onContinueDemo={enterWorkspace}
       />
     );
   }
@@ -262,10 +268,6 @@ export default function App() {
         <SettingsRoute
           settings={settings}
           users={users}
-          customers={customers}
-          deliveries={deliveries}
-          pauseRequests={pauseRequests}
-          invoices={invoices}
           onChange={(nextSettings) => {
             setSettings(nextSettings);
             void persistRepositoryFile("settingsFile", nextSettings, "Update Kerala Tiffins settings");
