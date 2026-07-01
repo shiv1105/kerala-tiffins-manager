@@ -37,7 +37,7 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState("Demo data");
   const [selectedInvoiceCustomer, setSelectedInvoiceCustomer] = useState<string | undefined>();
   const [setup, setSetup] = useState<SetupValues>({
-    owner: storedConfig?.owner ?? "",
+    owner: storedConfig?.owner ?? "shiv1105",
     repo: storedConfig?.repo ?? "kerala-tiffins-data",
     branch: storedConfig?.branch ?? "main",
     token: storedConfig?.rememberToken ? storedConfig.token ?? "" : "",

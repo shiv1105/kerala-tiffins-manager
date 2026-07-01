@@ -41,7 +41,7 @@
     "failedDeliveryBillable": true
   },
   "github": {
-    "owner": "",
+    "owner": "shiv1105",
     "repo": "kerala-tiffins-data",
     "branch": "main",
     "dataMode": "json",
