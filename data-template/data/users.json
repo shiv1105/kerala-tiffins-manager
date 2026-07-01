@@ -1,0 +1,10 @@
+[
+  {
+    "id": "user_owner",
+    "name": "Owner",
+    "email": "owner@example.com",
+    "role": "owner",
+    "modules": ["dashboard", "customers", "scheduling", "packing", "invoices", "reports", "settings"],
+    "active": true
+  }
+]

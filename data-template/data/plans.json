@@ -1,0 +1,10 @@
+[
+  {
+    "id": "plan_monthly_lunch",
+    "name": "Monthly Lunch",
+    "type": "monthly",
+    "mealType": "lunch",
+    "defaultPrice": 12,
+    "deliveryDays": ["mon", "tue", "wed", "thu", "fri"]
+  }
+]

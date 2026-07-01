@@ -1,0 +1,9 @@
+{
+  "name": "Kerala Tiffins Manager",
+  "short_name": "KT Manager",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f7f5ef",
+  "theme_color": "#0f4f3f",
+  "description": "Internal operations dashboard for Kerala Tiffins."
+}

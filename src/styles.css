@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #10221d;
+  background: #f7f5ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+@layer components {
+  .panel {
+    @apply border border-black/10 bg-white shadow-soft;
+    border-radius: 8px;
+  }
+
+  .input {
+    @apply h-10 w-full rounded-md border border-black/15 bg-white px-3 text-sm text-ink outline-none transition focus:border-leaf focus:ring-2 focus:ring-leaf/20;
+  }
+
+  .textarea {
+    @apply min-h-24 w-full rounded-md border border-black/15 bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-leaf focus:ring-2 focus:ring-leaf/20;
+  }
+
+  .label {
+    @apply text-xs font-semibold uppercase tracking-normal text-ink/60;
+  }
+
+  .icon-button {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-md border border-black/10 bg-white text-ink transition hover:border-leaf/40 hover:bg-leaf/5;
+  }
+
+  .primary-button {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md bg-leaf px-3 text-sm font-semibold text-white transition hover:bg-[#0b573f] disabled:cursor-not-allowed disabled:bg-ink/30;
+  }
+
+  .secondary-button {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm font-semibold text-ink transition hover:border-leaf/40 hover:bg-leaf/5;
+  }
+
+  .danger-button {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-spice/30 bg-spice/10 px-3 text-sm font-semibold text-spice transition hover:bg-spice/15;
+  }
+}

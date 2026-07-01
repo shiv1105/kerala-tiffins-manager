@@ -1,0 +1,50 @@
+{
+  "business": {
+    "name": "Kerala Tiffins",
+    "address": "Scarborough, ON",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "taxRegistrationNumber": "",
+    "invoiceFooterNote": "Thank you for choosing Kerala Tiffins."
+  },
+  "pricing": {
+    "defaultPricePerTiffin": 12,
+    "weeklyPlan": 60,
+    "monthlyPlan": 240,
+    "lunchRate": 12,
+    "dinnerRate": 13,
+    "deliveryFee": 0
+  },
+  "tax": {
+    "mode": "no_tax",
+    "name": "HST",
+    "rate": 0.13,
+    "registrationNumber": "",
+    "applyAfterDiscount": true
+  },
+  "discounts": {
+    "enabled": true,
+    "maxPercent": 25,
+    "requireReason": true
+  },
+  "invoice": {
+    "prefix": "KT-2026",
+    "nextNumber": 1,
+    "dueDays": 7,
+    "currency": "CAD",
+    "notes": "Skipped/customer-pause days are shown for transparency and are not charged."
+  },
+  "scheduling": {
+    "defaultDeliveryDays": ["mon", "tue", "wed", "thu", "fri"],
+    "pauseCutoffTime": "18:00",
+    "failedDeliveryBillable": true
+  },
+  "github": {
+    "owner": "",
+    "repo": "kerala-tiffins-data",
+    "branch": "main",
+    "dataMode": "json",
+    "lockTimeoutMinutes": 8
+  }
+}

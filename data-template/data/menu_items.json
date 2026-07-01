@@ -1,0 +1,9 @@
+[
+  {
+    "id": "item_fish_curry",
+    "name": "Kerala fish curry",
+    "category": "curry",
+    "ingredientTags": ["fish", "spicy", "non_vegetarian"],
+    "active": true
+  }
+]
