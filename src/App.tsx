@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, type NavItem } from "./components/AppShell";
+import { LiveDataSetup } from "./components/LiveDataSetup";
 import { SetupScreen, type SetupValues } from "./components/SetupScreen";
 import {
   demoData,
@@ -32,6 +33,8 @@ const navItems: NavItem[] = [
 
 export default function App() {
   const storedConfig = loadLocalConfig();
+  const attemptedAutoConnect = useRef(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem("kt_admin_session") === "true");
   const [isReady, setIsReady] = useState(false);
   const [active, setActive] = useState<ModuleKey>("dashboard");
   const [syncStatus, setSyncStatus] = useState("Live workspace");
@@ -201,21 +204,27 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (!isAuthenticated || isReady || attemptedAutoConnect.current || !setup.token) return;
+    attemptedAutoConnect.current = true;
+    void connectGitHub();
+  }, [isAuthenticated, isReady, setup.token]);
+
   const enterWorkspace = () => {
-    if (setup.owner && setup.repo && setup.branch && setup.token) {
-      void connectGitHub();
-      return;
-    }
-    setSyncStatus("Live workspace");
-    setIsReady(true);
+    localStorage.setItem("kt_admin_session", "true");
+    setIsAuthenticated(true);
   };
 
-  if (!isReady) {
+  if (!isAuthenticated) {
     return (
       <SetupScreen
         onContinueDemo={enterWorkspace}
       />
     );
+  }
+
+  if (!isReady) {
+    return <LiveDataSetup values={setup} status={syncStatus} onChange={setSetup} onConnect={connectGitHub} />;
   }
 
   return (
